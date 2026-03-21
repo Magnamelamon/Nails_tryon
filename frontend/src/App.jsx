@@ -9,7 +9,8 @@ function App() {
   const canvasRef = useRef(null);
   const [handState, setHandState] = useState(null);
   const [isReady, setIsReady] = useState(false);
-  const [nailColor, setNailColor] = useState('#e11d48'); // Color de esmalte por defecto (rojo rosa)
+  const [nailColor, setNailColor] = useState('#e11d48'); // Color de esmalte por defecto
+  const [apiColors, setApiColors] = useState([]); // Colores desde la BD/API mock
 
   // Función para dibujar el esmalte de uñas
   const drawNails = (ctx, landmarks, width, height, color) => {
@@ -59,7 +60,7 @@ function App() {
         const thumbZ = tipLm.z;
         // Obtenemos la profundidad promedia del "lomo" de la mano (nudillos 5 y 17)
         const palmZ = (landmarks[5].z + landmarks[17].z) / 2;
-        
+
         // Si el pulgar está significativamente "más hondo" (lejos) que el lomo de la mano, 
         // significa físicamente que lo escondimos detrás de la mano en dirección a nuestro pecho.
         // Un umbral empírico de ~0.04 suele funcionar en MediaPipe Z para marcar que cruzó hacia atrás.
@@ -148,6 +149,20 @@ function App() {
   useEffect(() => {
     nailColorRef.current = nailColor;
   }, [nailColor]);
+
+  // Cargar colores de la base de datos (Backend Express Mock)
+  useEffect(() => {
+    fetch('http://localhost:3001/api/colors')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.data) {
+          setApiColors(data.data);
+          // Opcional: Establecer el primer color de la DB como predeterminado
+          // if (data.data.length > 0) setNailColor(data.data[0].hexCode);
+        }
+      })
+      .catch(err => console.error("Error al obtener colores de la API:", err));
+  }, []);
 
   useEffect(() => {
     const videoElement = videoRef.current;
@@ -300,39 +315,33 @@ function App() {
                   <div className="stat-row" style={{ marginTop: '0.5rem', borderBottom: 'none', flexDirection: 'column', alignItems: 'flex-start', gap: '10px' }}>
                     <span style={{ color: 'var(--acc-back)', fontWeight: 'bold' }}>Color de Esmalte</span>
                     <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                      {/* 4 Opciones de colores predefinidos (Presets) */}
-                      {['#e11d48', '#fb7185', '#881337', '#eab308'].map(color => (
-                        <button
-                          key={color}
-                          onClick={() => setNailColor(color)}
-                          style={{
-                            backgroundColor: color,
-                            width: '30px',
-                            height: '30px',
-                            borderRadius: '50%',
-                            border: nailColor === color ? '2px solid white' : '2px solid transparent',
-                            cursor: 'pointer',
-                            padding: 0,
-                            boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
-                          }}
-                          title={`Color ${color}`}
-                        />
-                      ))}
+                      {/* Opciones de colores desde la API (Mock SQL DB) */}
+                      {apiColors.length > 0 ? (
+                        apiColors.map(colorItem => (
+                          <button
+                            key={colorItem.productId}
+                            onClick={() => setNailColor(colorItem.hexCode)}
+                            style={{
+                              backgroundColor: colorItem.hexCode,
+                              width: '30px',
+                              height: '30px',
+                              borderRadius: '50%',
+                              border: nailColor === colorItem.hexCode ? '2px solid white' : '2px solid transparent',
+                              cursor: 'pointer',
+                              padding: 0,
+                              boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                            }}
+                            title={`${colorItem.colorName} (${colorItem.productId})`}
+                          />
+                        ))
+                      ) : (
+                        <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Cargando BD...</span>
+                      )}
 
                       {/* Separador */}
                       <div style={{ width: '1px', height: '20px', backgroundColor: 'var(--border-color)', margin: '0 5px' }}></div>
 
                       {/* Opcion Libre (Personalizada) */}
-                      <input
-                        type="color"
-                        value={nailColor}
-                        onChange={(e) => setNailColor(e.target.value)}
-                        style={{
-                          background: 'none', border: 'none', cursor: 'pointer',
-                          height: '30px', width: '30px', padding: 0, borderRadius: '50%'
-                        }}
-                        title="Elegir cualquier color"
-                      />
                     </div>
                   </div>
                 )}
